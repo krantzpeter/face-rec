@@ -1,0 +1,229 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1687</width>
+    <height>1169</height>
+   </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="windowTitle">
+   <string>Face Recognition Processing</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="horizontalLayout">
+    <item>
+     <layout class="QHBoxLayout" name="horizontalLayout_6">
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout">
+        <item>
+         <widget class="QTableWidget" name="tableWidget"/>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressBar">
+          <property name="value">
+           <number>24</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+      <item>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item alignment="Qt::AlignTop">
+         <widget class="QPushButton" name="PushButton_Save">
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="text">
+           <string>Save</string>
+          </property>
+          <property name="checkable">
+           <bool>false</bool>
+          </property>
+          <property name="checked">
+           <bool>false</bool>
+          </property>
+          <property name="default">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTreeWidget" name="treeWidget">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
+          <column>
+           <property name="text">
+            <string notr="true">1</string>
+           </property>
+          </column>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="StartStopPushButton">
+          <property name="text">
+           <string>Stop</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </item>
+     </layout>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>1687</width>
+     <height>21</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menu_File">
+    <property name="title">
+     <string>&amp;File</string>
+    </property>
+    <addaction name="actionE_xit"/>
+   </widget>
+   <widget class="QMenu" name="menu_Help">
+    <property name="title">
+     <string>&amp;Help</string>
+    </property>
+    <addaction name="action_About"/>
+   </widget>
+   <widget class="QMenu" name="menuTools">
+    <property name="title">
+     <string>Tools</string>
+    </property>
+    <addaction name="action_Display_Image"/>
+    <addaction name="action_Find_Faces_in_Images"/>
+   </widget>
+   <widget class="QMenu" name="menu_Filter">
+    <property name="title">
+     <string>&amp;Filter</string>
+    </property>
+    <addaction name="action_Filter_All_Faces"/>
+    <addaction name="action_Filter_Named_Faces"/>
+    <addaction name="action_Filter_Reference_Faces"/>
+    <addaction name="action_Filter_Unnamed_Faces"/>
+    <addaction name="action_Search_for_Reference_Images"/>
+   </widget>
+   <widget class="QMenu" name="menu_Set">
+    <property name="title">
+     <string>&amp;Update</string>
+    </property>
+    <addaction name="action_Set_Reference_Faces"/>
+    <addaction name="action_Delete_Selected_Faces"/>
+    <addaction name="action_Remove_Face_Tag"/>
+    <addaction name="action_Change_Face_Tag"/>
+   </widget>
+   <addaction name="menu_File"/>
+   <addaction name="menu_Filter"/>
+   <addaction name="menu_Set"/>
+   <addaction name="menuTools"/>
+   <addaction name="menu_Help"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionE_xit">
+   <property name="text">
+    <string>E&amp;xit</string>
+   </property>
+  </action>
+  <action name="action_About">
+   <property name="text">
+    <string>&amp;About</string>
+   </property>
+  </action>
+  <action name="action_Display_Image">
+   <property name="text">
+    <string>&amp;Display Image</string>
+   </property>
+  </action>
+  <action name="actionSet_Reference_Faces">
+   <property name="text">
+    <string>Set Reference Faces</string>
+   </property>
+  </action>
+  <action name="action_Filter_All_Faces">
+   <property name="text">
+    <string>&amp;All Faces</string>
+   </property>
+  </action>
+  <action name="action_Filter_Named_Faces">
+   <property name="text">
+    <string>&amp;Named Faces</string>
+   </property>
+  </action>
+  <action name="action_Filter_Reference_Faces">
+   <property name="text">
+    <string>&amp;Reference Faces</string>
+   </property>
+  </action>
+  <action name="action_Set_Reference_Faces">
+   <property name="text">
+    <string>Set &amp;Reference Faces</string>
+   </property>
+  </action>
+  <action name="action_Filter_Unnamed_Faces">
+   <property name="enabled">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>&amp;Unnamed Faces</string>
+   </property>
+  </action>
+  <action name="action_Find_Faces_in_Images">
+   <property name="text">
+    <string>&amp;Find Faces in Images</string>
+   </property>
+  </action>
+  <action name="action_Delete_Selected_Faces">
+   <property name="text">
+    <string>&amp;Delete Selected Faces</string>
+   </property>
+  </action>
+  <action name="action_Tag_Unnamed_Faces">
+   <property name="text">
+    <string>Tag &amp;Unnamed Faces</string>
+   </property>
+  </action>
+  <action name="action_Remove_Face_Tag">
+   <property name="text">
+    <string>&amp;Remove Face Tag</string>
+   </property>
+  </action>
+  <action name="action_Change_Face_Tag">
+   <property name="text">
+    <string>&amp;Change Face Tag</string>
+   </property>
+  </action>
+  <action name="action_Search_for_Reference_Images">
+   <property name="text">
+    <string>Search for &amp;Reference Images</string>
+   </property>
+  </action>
+  <action name="action_Set_Named_as_Confirmed">
+   <property name="text">
+    <string>Set Selected Named as &amp;Confirmed</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
