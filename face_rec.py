@@ -1,24 +1,26 @@
+import collections
+import ntpath
+import os
+import queue
+import sqlite3 as lite
+import sys
+import time
+import traceback
+
+import AdobeElementsSQLiteTools as AEL
+import PIL
 import face_recognition
 import numpy
-import PIL
 from PIL import ImageDraw, Image, ExifTags, ImageQt
-import sqlite3 as lite
-import AdobeElementsSQLiteTools as AEL
-import ntpath
-import sys
 from PyQt5 import QtGui
-from PyQt5.QtGui import QImage, QKeyEvent, QKeySequence
-from PyQt5 import QtCore, QtWidgets
-from PyQt5.QtCore import QThread, QObject, pyqtSignal, pyqtSlot, QRunnable, QThreadPool, QTimer, Qt, QEvent, QMutexLocker, QMutex
-from PyQt5.QtWidgets import QMainWindow, QWidget, QPushButton, QAction, QListWidget, QVBoxLayout, QDialogButtonBox, \
-    QTableWidgetItem, QTableWidget, QHBoxLayout, QApplication, qApp, QShortcut, QLabel, QComboBox, QTreeWidget, QTreeWidgetItem, \
-    QActionGroup, QMessageBox
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable, QThreadPool, Qt, QMutexLocker, QMutex
+from PyQt5.QtGui import QImage
+from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication, qApp, QLabel, QComboBox, QTreeWidgetItem, \
+    QMessageBox
+
 from face_rec_processing import Ui_MainWindow
-import traceback
-import queue
-import time
-import os
-import collections
+
 
 # class delkeyFilter(QObject):
 #     def __init(self):
@@ -122,14 +124,14 @@ class EditImageTableCellWidget(QWidget):
 
     def __init__(self,
                  parent=None,
-                 face_id:int=None,
-                 tag_distance_list:list=None,
-                 tag_id:int=None,
-                 tag_name:str=None,
-                 media_id:int=None,
-                 is_reference_face:bool=None,
-                 is_confirmed_face:bool=None,
-                 filename:str=''):
+                 face_id: int = None,
+                 tag_distance_list: list = None,
+                 tag_id: int = None,
+                 tag_name: str = None,
+                 media_id: int = None,
+                 is_reference_face: bool = None,
+                 is_confirmed_face: bool = None,
+                 filename: str = ''):
         """
         Initialise this cell widget with values
         :param parent:              Parent window
@@ -147,9 +149,9 @@ class EditImageTableCellWidget(QWidget):
         :param filename:            The fully qualified filename of the image with media_id from whcih this face was extracted
         """
         layout = self._init_base_params(parent=parent,
-                              face_id=face_id,
-                              media_id=media_id,
-                              filename=filename)
+                                        face_id=face_id,
+                                        media_id=media_id,
+                                        filename=filename)
         # Now add tag elements
         # self.thumb_qcombo = QComboBox()
 
@@ -171,9 +173,15 @@ class EditImageTableCellWidget(QWidget):
                 if distance > distance_cutoff:
                     break
                 index += 1
-            index = max(index,5)
+            index = max(index, 5)
             if distances[0] < distance_cutoff:
                 self.thumb_qcombo.addItems(tag_names[0:index])
+                self.thumb_qcombo_tag_ids = tag_ids[0:index]
+                # set default to tag_id of best match
+                self.tag_id = tag_ids[0]
+            else:
+                self.thumb_qcombo_tag_ids = None
+                self.tag_id = None
             layout.addWidget(self.thumb_qcombo, alignment=Qt.AlignBottom)
         else:
             self.thumb_qcombo = QLabel()  # Label in which to display tag (combo for multiple tags)
@@ -191,7 +199,19 @@ class EditImageTableCellWidget(QWidget):
                 self.tag_id = int(tag_id)
             else:
                 self.tag_id = None
+            # There's a single tag_id so clear the tag_id list
+            self.thumb_qcombo_tag_ids = None
 
+        # Make sure all members are initialised
+        try:
+            self.face_id
+            self.media_id
+            self.tag_id
+            self.thumb_qcombo
+            self.thumb_qcombo_tag_ids
+            self.thumb_qlabel
+        except:
+            raise
 
         # super(EditImageTableCellWidget, self).__init__(parent)
         #
@@ -243,9 +263,9 @@ class EditImageTableCellWidget(QWidget):
 
     def _init_base_params(self,
                           parent=None,
-                          face_id:int=None,
-                          media_id:int=None,
-                          filename:str=''):
+                          face_id: int = None,
+                          media_id: int = None,
+                          filename: str = ''):
         """
         Initialise this cell widget base parameters excluding tag which will be initialised separately with multiple or
         single tag values
@@ -303,13 +323,28 @@ class EditImageTableCellWidget(QWidget):
         self.setStatusTip(status_tip)
         return layout
 
+    def replace_thumb_qcombo_as_qlabel(self):
+        """
+        Changes this EditImageTableCellWidget's thumb_combo widget from a QComboBox to a QLabel
+        :return:
+        """
+        if type(self.thumb_qcombo) is QComboBox:
+            self.thumb_qcombo.setVisible(False)
+            layout = self.thumb_qcombo.parent().layout()
+            layout.removeWidget(self.thumb_qcombo)
+            self.thumb_qcombo.destroy()
+            self.thumb_qcombo = None
+            self.thumb_qcombo = QLabel()
+            layout.addWidget(self.thumb_qcombo, Qt.AlignBottom)
+            self.thumb_qcombo_tag_ids = None
+            self.thumb_qcombo.update()
 
     @property
     def is_confirmed_face(self):
         return self._is_confirmed_face
 
     @is_confirmed_face.setter
-    def is_confirmed_face(self, value:bool):
+    def is_confirmed_face(self, value: bool):
         self._is_confirmed_face = value
         if value and not self._is_reference_face:
             # self.thumb_qlabel.setStyleSheet('QLabel {background-color:red;}')
@@ -320,18 +355,19 @@ class EditImageTableCellWidget(QWidget):
         return self._is_reference_face
 
     @is_reference_face.setter
-    def is_reference_face(self, value:bool):
+    def is_reference_face(self, value: bool):
         self._is_reference_face = value
         if value:
             # self.thumb_qlabel.setStyleSheet('QLabel {background-color:red;}')
             self.thumb_qcombo.setStyleSheet('QLabel {background-color:red;color:white}')
 
-    def mouseDoubleClickEvent(self, mouseEvent:QtGui.QMouseEvent):
+    def mouseDoubleClickEvent(self, mouseEvent: QtGui.QMouseEvent):
         display_source_image_with_face_rectangles(face_id=self.face_id, db_con=myapp.db_con)
         mouseEvent.accept()
 
     # def focusInEvent(self, event:QtGui.QFocusEvent):
     #     QWidget.focusInEvent(event)
+
 
 class LRUCache:
     def __init__(self, capacity):
@@ -356,6 +392,7 @@ class LRUCache:
             if len(self.cache) >= self.capacity:
                 self.cache.popitem(last=False)
         self.cache[key] = value
+
 
 # This is an example of running face recognition on a single image
 # and drawing a box around each person that was identified.
@@ -437,32 +474,48 @@ class Worker(QRunnable):
 
 
 class myMainWindow(QMainWindow):
-
     timer_interval = 0.5
-    face_distance_tolerance = 0.6 # 0.45
+    face_distance_tolerance = 0.6  # 0.45
     scaled_height_for_resized_images = 1200
     thumbnail_height = 100
     tag_id_of_face_scan_completed_tag = 0
     image_cache = LRUCache(300)
     thumbnail_cache = LRUCache(1000)
-    thumbnail_directory = os.getenv('LOCALAPPDATA') +  r'\face_rec\thumbnails' + '\\'
+    thumbnail_directory = os.getenv('LOCALAPPDATA') + r'\face_rec\thumbnails' + '\\'
 
     def __del__(self):
         if self.db_con:
             self.db_con.close()
 
     def closeEvent(self, *args, **kwargs):
-        self.ExitApp()
+        event = args[0]
+
+        if not self.ExitApp():
+            # Action was cancelled by user
+            event.ignore()
+        else:
+            # Action not cancelled so accept this event.
+            event.accept()
 
     def ExitApp(self):
+        """
+        Called when exit has been requested to first check if we need to save if appropriate.
+
+        :return:  True if we should exit. False if exit cancelled by user.
+        """
         print("Exit requested")
         if self.save_pending_tableWidget:
             # Call the save function tat was specified
-            self.save_function_tableWidget()
+            b_exit_confirmed = self.save_function_tableWidget()
+            if not b_exit_confirmed:
+                return False
             self.save_pending_tableWidget = False
         self.face_processing_termination_requested = True
         self.threadpool.waitForDone()
         qApp.exit()
+
+        # Return flagging that action was not cancelled.
+        return True
 
     # def testkeypress(self):
     #     print("testkeypress")
@@ -501,7 +554,6 @@ class myMainWindow(QMainWindow):
         self.ui.PushButton_Save.setEnabled(False)
         self.ui.PushButton_Save.setVisible(False)
 
-
         self.ui.progressBar.setValue(0)
         self.ui.progressBar.setVisible(False)
         self.ui.tableWidget.cellDoubleClicked.connect(self.cellDoubleClicked)
@@ -518,9 +570,11 @@ class myMainWindow(QMainWindow):
         self.grid_cols = 10
         self.grid_num_images = 10000
         self.grid_start_image = 1
-        self.save_pending_tableWidget = False   # Set to true if the tableWidget has been changed and needs to be saved
-                                                # and set save_function_tableWidget to function you need to call
+        self.save_pending_tableWidget = False  # Set to true if the tableWidget has been changed and needs to be saved
+        # and set save_function_tableWidget to function you need to call
         self.save_function_tableWidget = None
+
+        self.ui.tableWidget.setColumnCount(self.grid_cols)
 
         # self.shortcut = QShortcut(QKeySequence("PgDown"), self, self.onPgDnShortcutTriggered(), self.onPgDnShortcutTriggered(), Qt.WindowShortcut)
         # self.filter = delkeyFilter(self)
@@ -537,11 +591,12 @@ class myMainWindow(QMainWindow):
         self.db_con = lite.connect('C:\ProgramData\Adobe\Photoshop Elements\Catalogs\My Catalog\catalog.psedb')
 
         # Get tag number of
-        myMainWindow.tag_id_of_face_scan_completed_tag = AEL.get_tag_id_of_specified_tag_name(self.db_con, 'Face Scan Completed')
+        myMainWindow.tag_id_of_face_scan_completed_tag = AEL.get_tag_id_of_specified_tag_name(self.db_con,
+                                                                                              'Face Scan Completed')
         if not myMainWindow.tag_id_of_face_scan_completed_tag:
-            raise(Exception("Couldn't find 'Face Scan Completed' in Adobe catalog."))
+            raise (Exception("Couldn't find 'Face Scan Completed' in Adobe catalog."))
 
-    def enumerate_menu_actions(self, menu:QtWidgets.QMenu, action_list:list = None):
+    def enumerate_menu_actions(self, menu: QtWidgets.QMenu, action_list: list = None):
         """
         Returns list of all the QActions in a menu and it's submenus
         :param menu:            QMenu to enumerate
@@ -559,29 +614,94 @@ class myMainWindow(QMainWindow):
         return action_list
 
     def save_added_tags(self):
-        #todo
+        # todo
         # save newly added tags in tableWidget data to database
         # Check all faces in tableWidget and if they have tags, save them to the face_table
+        row = 0
+        col = 0
+        update_list = list()
+        if self.ui.tableWidget.rowCount():
+            for row in range(self.ui.tableWidget.rowCount()-1):
+                for col in range(self.ui.tableWidget.columnCount()-1):
+                    table_widget_item = self.ui.tableWidget.cellWidget(row, col)
+                    if table_widget_item:
+                        # Found a non-empty table_widget_item in this cell so check if it has a tag value to save
+                        if type(table_widget_item.thumb_qcombo) is QComboBox:
+                            # widget's tag is in a combo box so get its text
+                            if table_widget_item.thumb_qcombo_tag_ids:
+                                # tag_name = table_widget_item.thumb_qcombo.currentText()
+                                tag_id = table_widget_item.thumb_qcombo_tag_ids[table_widget_item.thumb_qcombo.currentIndex()]
+                            else:
+                                tag_id = None
+                        else:
+                            # widget's tag is in a QLabel so get its text
+                            # tag_name = table_widget_item.thumb_qcombo.text()
+                            tag_id = table_widget_item.tag_id
+                        if tag_id:
+                            update_list.append((tag_id, table_widget_item.face_id))
+            # Update tags to face_table
+            try:
+                with self.db_con:
 
-        print("placeholder: tags saved")
+                    query = """
+                        UPDATE face_table
+                        SET 
+                            tag_id = ?
+                        WHERE
+                            face_id = ?;            
+                    """
+                    cur = self.db_con.cursor()
+                    cur.executemany(query, update_list)
+                    self.db_con.commit()
+
+            except:
+                ex = Exception("Unexpected error saving tags")
+                raise ex
+
+            print("placeholder: tags saved")
 
         self.save_pending_tableWidget = False
         self.ui.PushButton_Save.setEnabled(False)
         self.ui.PushButton_Save.setVisible(False)
 
     def search_for_reference_faces_save(self):
+        """
+        Check if we should save faces that have been identified as part of a search for reference faces.  If confirmed
+        then save, if discarded then proceed without save, if cancelled return False to indicate this
+        :return:    False if user cancelled, Ture if otherwise
+        """
         msgBox = QMessageBox()
-        msgBox.setText("Would you like to save the tagged faces that were tagged automatically and have not been changed (hence are still unsaved)?")
-        msgBox.setStandardButtons(QMessageBox.Save | QMessageBox.Discard)
+        msgBox.setText(
+            "Would you like to save the tagged faces that were tagged automatically and have not been changed (hence are still unsaved)?")
+        msgBox.setStandardButtons(QMessageBox.Save | QMessageBox.Discard | QMessageBox.Cancel)
         ret = msgBox.exec()
         if ret == QMessageBox.Save:
             # Save requested
             self.save_added_tags()
+        elif ret == QMessageBox.Cancel:
+            # User cancelled
+            return False
         self.save_pending_tableWidget = False
         self.save_function_tableWidget = None
 
+        # Flag that user did not cancel.
+        return True
+
+    def get_people_tags_from_treewidget(self):
+        """
+        Loads a dictionary of peopletags from the treewidget
+        :return:    Dictionary { <tag_id> : <tag_name> }
+        """
+        tree_widget_items = get_all_items(self.ui.treeWidget)
+        d = dict()
+        for tree_widget_item in tree_widget_items:
+            tag_id = tree_widget_item.data(0, Qt.UserRole)
+            tag_name = tree_widget_item.text(0)
+            d[tag_id] = tag_name
+        return d
 
     def search_for_reference_faces(self):
+
         # Load reference faces
         reference_faces = self.load_reference_faces()
         (ref_face_ids,
@@ -639,16 +759,17 @@ class myMainWindow(QMainWindow):
                 if tableWidget_row_count:
                     # Setup progress indicator
                     progress = QtWidgets.QProgressDialog("Comparing faces, please wait ...", "Abort", 0,
-                                                         tableWidget_row_count)
+                                                         num_unknown_faces)
                     progress.setWindowModality(Qt.WindowModal)
                     progress.setWindowTitle("Face Recognition")
 
                     # Now run the actual query and fetch the first row
                     cur.execute(query)
                     db_row = cur.fetchone()
-                    row = 0
-                    col = 0
 
+                    table_widget_item_list = list()
+
+                    face_index = 0
                     while db_row:
                         (
                             face_id,
@@ -661,29 +782,36 @@ class myMainWindow(QMainWindow):
                             tag_name,
                             face_encoding_blob
                         ) = db_row
+
                         unknown_face_encoding = numpy.frombuffer(bytes(face_encoding_blob))
                         filename = ntpath.normpath(drive_path_if_builtin + full_filepath)
 
+                        # Check if this image has a set of people tags and if it does restrict face comparison to these.
+                        tag_info  = get_people_tags_for_face_id(db_con=self.db_con, face_id=face_id)
+                        if tag_info:
+                            (source_image_tag_ids, source_image_tag_names) = tag_info
+                        else:
+                            source_image_tag_ids = None
+                            source_image_tag_names = None
                         # Compare this face to all known faces
                         face_distances = numpy.linalg.norm(ref_face_encodings - unknown_face_encoding, axis=1)
                         d = dict()
                         for ref_tag_id, ref_tag_name, distance in zip(ref_tag_ids, ref_tag_names, face_distances):
-                            if ref_tag_id in d:
-                                # tag already there so only update if its distance is smaller
-                                if d[ref_tag_id][1] > distance:
+                            if source_image_tag_ids == None or ref_tag_id in source_image_tag_ids:
+                                if ref_tag_id in d:
+                                    # tag already there so only update if its distance is smaller
+                                    if d[ref_tag_id][1] > distance:
+                                        d[ref_tag_id] = (ref_tag_name, distance)
+                                else:
+                                    # tag not there so add it
                                     d[ref_tag_id] = (ref_tag_name, distance)
-                            else:
-                                # tag not there so add it
-                                d[ref_tag_id] = (ref_tag_name, distance)
 
                         # sort dictionary by value
                         tag_distance_list = sorted(d.items(), key=lambda kv: kv[1][1])
 
-
                         # lowest_distance_found = 1
                         # lowest_index = None
                         # index = 0
-                        # #todo keep all distances not just lowest
                         # for this_distance in face_distances:
                         #     # if this_distance <= myMainWindow.face_distance_tolerance:
                         #     if this_distance < lowest_distance_found:
@@ -711,30 +839,53 @@ class myMainWindow(QMainWindow):
                                                               is_reference_face=is_reference_face,
                                                               is_confirmed_face=is_confirmed_face,
                                                               filename=filename)
-                        # Add cell widget to table
-                        if col >= self.grid_cols:
-                            progress.setValue(row)
-                            if (progress.wasCanceled()):
-                                break
-                            row += 1
-                            col = 0
-                        if row + 1 > self.ui.tableWidget.rowCount():
-                            # Extend table if needed
-                            self.ui.tableWidget.setRowCount(row + 1)
-
-                        self.ui.tableWidget.setCellWidget(row, col, cellwidget)
-
-                        col += 1
+                        table_widget_item_list.append(cellwidget)
+                        progress.setValue(face_index)
+                        if progress.wasCanceled():
+                            break
 
                         # Get next row
                         db_row = cur.fetchone()
-
-                    self.ui.tableWidget.resizeRowsToContents()
-                    self.ui.tableWidget.resizeColumnsToContents()
+                        face_index += 1
 
         except:
             ex = Exception("Unexpected error processing images")
             raise ex
+
+        # Now sort and add to tableWidget
+        # Setup progress indicator
+        tableWidget_row_count = len(table_widget_item_list) // self.grid_cols
+        progress = QtWidgets.QProgressDialog("Sorting and adding faces to table, please wait ...", "Abort", 0,
+                                             tableWidget_row_count)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowTitle("Face Recognition")
+
+        progress.setValue(0)
+        app.processEvents()
+        table_widget_item_list.sort(key=lambda x: x.tag_id if x.tag_id else 0)
+
+        row = 0
+        col = 0
+        table_widget_index = 0
+
+        for cellwidget in table_widget_item_list:
+            # Add cell widget to table
+            if col >= self.grid_cols:
+                progress.setValue(row)
+                if (progress.wasCanceled()):
+                    break
+                row += 1
+                col = 0
+            if row + 1 > self.ui.tableWidget.rowCount():
+                # Extend table if needed
+                self.ui.tableWidget.setRowCount(row + 1)
+
+            self.ui.tableWidget.setCellWidget(row, col, cellwidget)
+
+            col += 1
+
+        self.ui.tableWidget.resizeRowsToContents()
+        self.ui.tableWidget.resizeColumnsToContents()
 
     def load_reference_faces(self):
         """
@@ -750,7 +901,7 @@ class myMainWindow(QMainWindow):
                         tag_name,
                         face_encoding
         """
-        #load reference faces
+        # load reference faces
         query = """
                 SELECT 
                     face_id, 
@@ -816,12 +967,21 @@ class myMainWindow(QMainWindow):
         self.load_thumbnails_to_grid("")
 
     def clear_tableWidget(self):
-        #call save if pending
+        """
+        Clear's the table widget, asking user whether to save if appropriate.
+        :return:    Returns True if user confirms action or False if user presses Cancel.
+        """
+        # call save if pending
         if self.save_pending_tableWidget:
             # Call the save function tat was specified
-            self.save_function_tableWidget()
-        self.ui.tableWidget.clear()
+            b_exit_confirmed = self.save_function_tableWidget()
+            if not b_exit_confirmed:
+                return False
 
+        self.ui.tableWidget.clearContents()
+
+        # Return indicating operation not cancelled.
+        return True
 
     def filter_unnamed_faces(self):
         query = """
@@ -844,7 +1004,6 @@ class myMainWindow(QMainWindow):
                     face_table.tag_id IS NULL;
                 """
         self.load_thumbnails_to_grid(query)
-
 
     def filter_named_faces(self):
         query = """
@@ -891,7 +1050,6 @@ class myMainWindow(QMainWindow):
                 ORDER BY tag_id;        
         """
         self.load_thumbnails_to_grid(query)
-
 
     def set_reference_faces(self):
         selection = self.ui.tableWidget.selectedIndexes()
@@ -974,7 +1132,8 @@ class myMainWindow(QMainWindow):
             # Add these to database for each face and then flag the media_item as processed by adding a 'Face Scan Completed' tag.
             try:
                 if face_location_count:
-                    for (face_encoding, face_location) in zip(unknown_image_face_encodings, unknown_image_face_locations):
+                    for (face_encoding, face_location) in zip(unknown_image_face_encodings,
+                                                              unknown_image_face_locations):
                         # Write this face's data to the database
                         # Found face encoding so add to database
                         query = """
@@ -1001,11 +1160,20 @@ class myMainWindow(QMainWindow):
                                             lite.Binary(blob_bytes),
                                             False,
                                             False
-                                           )
+                                            )
                                     )
 
                         face_id = cur.lastrowid
-                        print("    face_id {} in media_id {} at ({}, {}, {}, {}) added to database.".format(face_id, media_id, face_location[0], face_location[1], face_location[2], face_location[3]))
+                        print("    face_id {} in media_id {} at ({}, {}, {}, {}) added to database.".format(face_id,
+                                                                                                            media_id,
+                                                                                                            face_location[
+                                                                                                                0],
+                                                                                                            face_location[
+                                                                                                                1],
+                                                                                                            face_location[
+                                                                                                                2],
+                                                                                                            face_location[
+                                                                                                                3]))
 
                         # Attempt to load face thumbnail to cause creation of thumbnail image in thumbnail_directory
                         im = myapp.get_qimage_face_thumbnail(face_id=face_id)
@@ -1029,12 +1197,12 @@ class myMainWindow(QMainWindow):
             except:
                 # unable to add face locations for this image
                 ex = "Unable to add face encodings for media_id () file '()'".format(media_id, filename)
-                print (ex)
+                print(ex)
                 self.db_con.rollback()
                 traceback.print_exc()
                 raise ex
 
-    def get_qimage_face_thumbnail(self, face_id:int):
+    def get_qimage_face_thumbnail(self, face_id: int):
         """
         Loads a QImage face thumbnail from cache (if found) or .png file in thumbnail_directory (if found).  If not found in these
         it creates the thumbnail from the source image in which the face was originally found and adds it to the
@@ -1075,10 +1243,10 @@ class myMainWindow(QMainWindow):
 
                     thumbnail.save(filespec)
                 except:
-                    raise(Exception("Unable to save thumbnail file '()'".format(filespec)))
+                    raise (Exception("Unable to save thumbnail file '()'".format(filespec)))
         return thumbnail
 
-    def create_qimage_face_thumbnail_from_original_image(self, face_id:int, thumb_height:int=100):
+    def create_qimage_face_thumbnail_from_original_image(self, face_id: int, thumb_height: int = 100):
         """
         Creates a thumbnail for a specified face by finding the face in its source image
         and cropping the image.
@@ -1113,26 +1281,26 @@ class myMainWindow(QMainWindow):
             row = cur.fetchone()
             if row:
                 (face_id,
-                media_id,
-                full_filepath,
-                drive_path_if_builtin,
-                scaled_image_max_height,
-                face_loc_top,
-                face_loc_right,
-                face_loc_bottom,
-                face_loc_left) = row
+                 media_id,
+                 full_filepath,
+                 drive_path_if_builtin,
+                 scaled_image_max_height,
+                 face_loc_top,
+                 face_loc_right,
+                 face_loc_bottom,
+                 face_loc_left) = row
 
                 filename = ntpath.normpath(drive_path_if_builtin + full_filepath)
-                image = load_image_from_file_or_cache(filespec=filename,image_mode='RGB')
+                image = load_image_from_file_or_cache(filespec=filename, image_mode='RGB')
                 if image:
-                    #TODO  replace resize by changing height scale (no longer urgent cos of caching)
+                    # TODO  replace resize by changing height scale (no longer urgent cos of caching)
 
                     old_height, old_width = image.size
                     # new_height = scaled_image_max_height
 
                     image = resize_image(image, scaled_image_max_height)
                     # scale_factor = float(old_height) / float(new_height)
-                    qtr_height = int((face_loc_bottom - face_loc_top)/4.0)
+                    qtr_height = int((face_loc_bottom - face_loc_top) / 4.0)
 
                     face_loc_bottom = min(scaled_image_max_height, face_loc_bottom + qtr_height)
                     face_loc_top = max(0, face_loc_top - qtr_height)
@@ -1145,7 +1313,7 @@ class myMainWindow(QMainWindow):
                     box = tuple((face_loc_left, face_loc_top, face_loc_right, face_loc_bottom))
                     cropped_image = image.crop(box)
                     qimage = PIL_image_to_QImage(cropped_image)
-                    #Resize image
+                    # Resize image
                     thumbnail = qimage.scaledToHeight(myMainWindow.thumbnail_height)
                     # thumbnail = resize_image(image=thumbnail, new_height=myMainWindow.thumbnail_height)
 
@@ -1164,7 +1332,8 @@ class myMainWindow(QMainWindow):
             self.process_results()
             app.processEvents()
             if self.face_processing_termination_requested or \
-                (self.faces_added_to_queue and self.work_to_be_done_queue.empty() and self.threadpool.activeThreadCount() == 0 and self.result_queue.empty()):
+                    (
+                            self.faces_added_to_queue and self.work_to_be_done_queue.empty() and self.threadpool.activeThreadCount() == 0 and self.result_queue.empty()):
                 # It's time to finish
                 self.face_processing_cleanup()
                 return
@@ -1221,8 +1390,6 @@ class myMainWindow(QMainWindow):
 
         # self.menu_action_group.setEnabled(False)
         self.process_faces()
-
-
 
     def process_faces(self):
         if self.face_proecessing_in_progress or self.face_processing_termination_requested:
@@ -1404,15 +1571,13 @@ class myMainWindow(QMainWindow):
     #             self.grid_start_image = 1
     #         self.disp_thumbnail_grid()
 
-    def load_thumbnails_to_grid(self, sql_query = ""):
+    def load_thumbnails_to_grid(self, sql_query=""):
         """
         Display a grid of face thumbnails starting from self.grid_start_image
         :param sql_query:
         :return:
         """
         # self.grid_layout = QtWidgets.QGridLayout(self.ui.graphicsView)
-
-        self.ui.tableWidget.setColumnCount(self.grid_cols)
 
         with self.db_con:
             # query = "select face_table.face_id from face_table;"
@@ -1460,9 +1625,12 @@ class myMainWindow(QMainWindow):
             col = 0
             if rows:
                 self.ui.tableWidget.setRowCount(rows.__len__() // self.grid_cols)
-                #Note that clear_tableWidget() also saves the current table data if necessary.
-                self.clear_tableWidget()
-                progress = QtWidgets.QProgressDialog("Reading thumbnails, please wait ...", "Abort", 0, len(rows)/self.grid_cols)
+                # Note that clear_tableWidget() also saves the current table data if necessary.
+                if not self.clear_tableWidget():
+                    # operation cancelled by user
+                    return
+                progress = QtWidgets.QProgressDialog("Reading thumbnails, please wait ...", "Abort", 0,
+                                                     len(rows) / self.grid_cols)
                 progress.setWindowModality(Qt.WindowModal)
                 progress.setWindowTitle("Face Recognition")
                 for db_row in rows:
@@ -1485,7 +1653,8 @@ class myMainWindow(QMainWindow):
                                                           tag_name=tag_name,
                                                           media_id=media_id,
                                                           is_reference_face=is_reference_face,
-                                                          is_confirmed_face=is_confirmed_face)
+                                                          is_confirmed_face=is_confirmed_face,
+                                                          filename=filename)
                     # qimage = myapp.get_qimage_face_thumbnail(face_id=face_id)
                     # pix_image = QtGui.QPixmap(qimage)
                     # cellwidget.thumb_qlabel.setPixmap(pix_image)
@@ -1543,12 +1712,18 @@ class myMainWindow(QMainWindow):
             row = model_index.row()
             column = model_index.column()
             table_widget_item = self.ui.tableWidget.cellWidget(row, column)
-            if table_widget_item and type(table_widget_item.thumb_qcombo) == QLabel:
-                # Valid widget found in this cell location so add to list
-                face_id_list.append((int(table_widget_item.face_id),))
+            if table_widget_item:
+                # thare is a table_widget_item for this tableWidget cell
+                # If this is a combo box then change it to a qlabel since it now has only one value of ""
+                if type(table_widget_item.thumb_qcombo) is QComboBox:
+                    table_widget_item.replace_thumb_qcombo_as_qlabel()
 
                 # Update this widget's tag to nothing
                 table_widget_item.thumb_qcombo.setText("")
+                self.tag_id = None
+
+                # Valid widget found in this cell location so add face_id list for it's tag to be remvoed from face_table
+                face_id_list.append((int(table_widget_item.face_id),))
 
         # Remove faces from catalog
         try:
@@ -1596,13 +1771,14 @@ class myMainWindow(QMainWindow):
             if table_widget_item:
                 # Valid widget/face found in this cell location that needs its tag updated
                 # Update this widget's tag to the new value
-                # todo If this is a combo vs a label then change this combo to a label and set to a single value
+                # If this is a combo vs a label then change this combo to a label and set to a single value
                 if type(table_widget_item.thumb_qcombo) == QComboBox:
-                    layout = table_widget_item.thumb_qcombo.parent().layout()
-                    layout.removeWidget(table_widget_item.thumb_qcombo)
-                    table_widget_item.thumb_qcombo = QLabel()
-                    layout.addWidget(table_widget_item.thumb_qcombo, Qt.AlignBottom)
-                    table_widget_item.thumb_qcombo.update()
+                    table_widget_item.replace_thumb_qcombo_as_qlabel()
+                    # layout = table_widget_item.thumb_qcombo.parent().layout()
+                    # layout.removeWidget(table_widget_item.thumb_qcombo)
+                    # table_widget_item.thumb_qcombo = QLabel()
+                    # layout.addWidget(table_widget_item.thumb_qcombo, Qt.AlignBottom)
+                    # table_widget_item.thumb_qcombo.update()
 
                 table_widget_item.thumb_qcombo.setText(new_tag)
 
@@ -1612,7 +1788,6 @@ class myMainWindow(QMainWindow):
                 # Get its data
                 media_id = table_widget_item.media_id
                 face_id = table_widget_item.face_id
-
 
                 # Add to data to face_id list for updating face_table later
                 face_id_list.append((face_id,))
@@ -1632,7 +1807,7 @@ class myMainWindow(QMainWindow):
 
                         if not row:
                             # Didn't find this media_id and tag_id combo so flag for insertion
-                            media_id_list.append((media_id, ))
+                            media_id_list.append((media_id,))
 
                 except:
                     print("Unexpected error checking whether media_id tags need updating.")
@@ -1664,11 +1839,12 @@ class myMainWindow(QMainWindow):
             print("Unexpected error trying to update face_table or media_table with new tag.")
 
     def action_display_image(self):
-        tableCellWidget = self.ui.tableWidget.cellWidget(self.ui.tableWidget.currentRow(), self.ui.tableWidget.currentColumn())
+        tableCellWidget = self.ui.tableWidget.cellWidget(self.ui.tableWidget.currentRow(),
+                                                         self.ui.tableWidget.currentColumn())
         if tableCellWidget:
             display_source_image_with_face_rectangles(face_id=tableCellWidget.face_id, db_con=myapp.db_con)
 
-    def cellDoubleClicked(self, row:int, col:int):
+    def cellDoubleClicked(self, row: int, col: int):
         # table_item = self.ui.tableWidget.item(row, col)
         # item_data = table_item.data(Qt.UserRole)
         # print (item_data['filename'])
@@ -1677,7 +1853,6 @@ class myMainWindow(QMainWindow):
         pass
         # tableCellWidget = self.ui.tableWidget.cellWidget(row, col)
         # display_source_image_with_face_rectangles(face_id=tableCellWidget.face_id, db_con=self.db_con)
-
 
     def dispatch_next_task_to_thread(self):
         """
@@ -1736,7 +1911,7 @@ class myMainWindow(QMainWindow):
                 delete_face_thumbnail_if_it_exists(face_id[0])
 
         except:
-            print ("Unexpected error attempting to delete selected faces.")
+            print("Unexpected error attempting to delete selected faces.")
 
     def populate_tree_widget(self):
         """
@@ -1772,7 +1947,6 @@ class myMainWindow(QMainWindow):
                         name,
                         parent_id
                     ) = row
-                    # TODO
                     # Find parent QTreeWidgetItem
                     try:
                         parent = tw_dict[parent_id]
@@ -1785,9 +1959,11 @@ class myMainWindow(QMainWindow):
                     # Add tag id as data so that we can easily get the tag_id for each tree item
                     tree_widget_item.setData(0, Qt.UserRole, id)
                     tw_dict[id] = tree_widget_item
+                tree_widget.sortByColumn(0,Qt.AscendingOrder)
+                tree_widget.setSortingEnabled(True)
 
 
-def delete_face_thumbnail_if_it_exists(face_id:int):
+def delete_face_thumbnail_if_it_exists(face_id: int):
     """
     Look in relevant %localappdata%\face_rec\thumbnails subdirectory for thumbnail with specified face_id and
     if it exists, delete it.
@@ -1802,7 +1978,7 @@ def delete_face_thumbnail_if_it_exists(face_id:int):
         return False
 
 
-def display_source_image_with_face_rectangles(face_id:int, db_con:lite.Connection):
+def display_source_image_with_face_rectangles(face_id: int, db_con: lite.Connection):
     """
     Loads an image and draws face rectangles around it based on faces identfied and recorded in the face_table
     :param db_oon:  Sqlite customised adobe elements catalog database connection
@@ -1843,7 +2019,8 @@ def display_source_image_with_face_rectangles(face_id:int, db_con:lite.Connectio
             drive_path_if_builtin = row[3]
 
             filename = ntpath.normpath(drive_path_if_builtin + full_filepath)
-            image = load_image_from_file_or_cache(filespec=filename, image_mode='RGB', new_height=myMainWindow.scaled_height_for_resized_images)
+            image = load_image_from_file_or_cache(filespec=filename, image_mode='RGB',
+                                                  new_height=myMainWindow.scaled_height_for_resized_images)
 
             draw = ImageDraw.Draw(image)
             for row in rows:
@@ -1883,7 +2060,6 @@ def display_source_image_with_face_rectangles(face_id:int, db_con:lite.Connectio
                 draw.text((face_loc_left + 6, face_loc_bottom - text_height - 5), name,
                           fill=(255, 255, 255, 255))
 
-
             d = QtWidgets.QDialog()
             title = "Image file '{!r}'".format(os.path.normpath(filename))
             d.setWindowTitle(title)
@@ -1904,7 +2080,7 @@ def display_source_image_with_face_rectangles(face_id:int, db_con:lite.Connectio
             d.exec_()
 
 
-def get_media_item_details_for_face_id(face_id:int, db_con:lite.Connection):
+def get_media_item_details_for_face_id(face_id: int, db_con: lite.Connection):
     """
     Loads the row details of a media item image given a face_id.  Returns an sqlite row or None if not found.
     :param face_id: Face id for whcih source image details are to be retrieved
@@ -1912,14 +2088,12 @@ def get_media_item_details_for_face_id(face_id:int, db_con:lite.Connection):
     :return:        dictionary with following keys:
                         face_id,
                         media_id,
-                        media_table.full_filepath,
-                        volume_table.drive_path_if_builtin
+                        filename
     """
     with db_con:
         # query = "select face_table.face_id from face_table;"
         query = """
                 SELECT 
-                    face_id, 
                     media_id, 
                     media_table.full_filepath, 
                     volume_table.drive_path_if_builtin 
@@ -1940,7 +2114,93 @@ def get_media_item_details_for_face_id(face_id:int, db_con:lite.Connection):
         except Exception as e:
             raise e
 
-        return row
+        if not row:
+            return None
+
+        (media_id, full_filepath, drive_path_if_builtin) = row
+        filename = ntpath.normpath(drive_path_if_builtin + full_filepath)
+        d = {'face_id': face_id, 'media_id': media_id, 'filename': filename}
+
+        return d
+
+
+def get_people_tags_for_face_id(db_con: lite.Connection, face_id: int):
+    """
+    Returns a list of people tag_ids (i.e. only descendents of the People tag) for the specified face_id
+    :param db_oon:                  Sqlite customised adobe elements catalog database connection
+    :param face_id:                 int face_id to look for tag_ids for associated with the face_id's originating
+                                    media item
+    :return:                        Tuple contianing, for this face
+                                        ( <tag_id_list>, <face_id_list>)
+    """
+    with db_con:
+        query = """
+                SELECT
+                    tag_to_media_table.tag_id,
+                    tag_table.name
+                FROM 
+                    face_table, 
+                    tag_to_media_table,
+                    tag_table
+                WHERE
+                    face_table.face_id = ? AND 
+                    tag_to_media_table.tag_id = tag_table.id AND
+                    tag_to_media_table.media_id = face_table.media_id
+                    AND (SELECT tag_table.id FROM tag_table WHERE name = 'People') IN 
+                        (WITH RECURSIVE
+                                parent_of(id, parent_id) AS
+                                    (SELECT id, parent_id FROM tag_table),
+                                ancestor_of_person(id) AS
+                                    (SELECT parent_id FROM parent_of WHERE id=tag_to_media_table.tag_id
+                                UNION ALL
+                                    SELECT parent_id FROM parent_of JOIN ancestor_of_person USING(id))
+                            SELECT tag_table.parent_id FROM ancestor_of_person, tag_table
+                                WHERE ancestor_of_person.id=tag_table.id and tag_table.parent_id!=0
+                        );
+        """
+        try:
+            cur = db_con.cursor()
+            cur.execute(query, (face_id,))
+            rows = cur.fetchall()
+
+        except Exception as e:
+            raise e
+
+        tag_list = list(zip(*rows))
+
+        return tag_list
+
+
+def get_tag_ids_for_face_id(db_con: lite.Connection, face_id: int):
+    """
+    Gets a list of tag_ids associated with this face_id
+    :param db_oon:  Sqlite customised adobe elements catalog database connection
+    :param face_id: Face id for whcih source image details are to be retrieved
+    :return:        list of tag_ids
+    """
+    with db_con:
+        # query = "select face_table.face_id from face_table;"
+        query = """
+                SELECT 
+                    tag_id 
+                FROM 
+                    face_table, 
+                    media_table 
+                WHERE
+                    where face_table.face_id = ? 
+                    media_table.id = face_table.media_id;
+        """
+        try:
+            cur = db_con.cursor()
+            cur.execute(query, (face_id,))
+            rows = cur.fetchall()
+
+        except Exception as e:
+            raise e
+
+        tag_ids = list(map(lambda kv: kv[0], rows))
+
+        return tag_ids
 
 
 def write_face_encoding_to_file(face_encoding: numpy.ndarray, person_name: str) -> bool:
@@ -1993,7 +2253,8 @@ def read_face_encoding_from_file(person_name: str):
 
     return face_encoding
 
-def load_image_from_file_or_cache(filespec:str, image_mode:str='RGB', new_height: int = 1200):
+
+def load_image_from_file_or_cache(filespec: str, image_mode: str = 'RGB', new_height: int = 1200):
     """
     Loads an image from file rotates it and converts it to RGB but DOES NOT resize it and returns as PIL image.  If in
     Cache, returns the cached image NOTE YOU MUST COPY THE CACHED IMAGE before changing it.
@@ -2004,7 +2265,7 @@ def load_image_from_file_or_cache(filespec:str, image_mode:str='RGB', new_height
     """
     cached_image = myMainWindow.image_cache.get((filespec, new_height))
     if cached_image != -1:
-        return(cached_image)
+        return (cached_image)
     else:
         try:
             image = PIL.Image.open(filespec)
@@ -2032,7 +2293,7 @@ def load_image_from_file_or_cache(filespec:str, image_mode:str='RGB', new_height
             pass
 
         except:
-            raise(Exception("Unexpected exception adjusting image orientation"))
+            raise (Exception("Unexpected exception adjusting image orientation"))
 
         if image.mode != image_mode:
             # Image is not 3x8 bit trud coloru RGB so convert to that
@@ -2041,7 +2302,9 @@ def load_image_from_file_or_cache(filespec:str, image_mode:str='RGB', new_height
         if new_height:
             resized_image = resize_image(image, new_height)
             if not image:
-                print("ERROR - Unexpected error attempting to resize image '{}'.  Returning unresized image from load_image_from_file_or_cache().".format(filespec))
+                print(
+                    "ERROR - Unexpected error attempting to resize image '{}'.  Returning unresized image from load_image_from_file_or_cache().".format(
+                        filespec))
             else:
                 image = resized_image
 
@@ -2050,7 +2313,8 @@ def load_image_from_file_or_cache(filespec:str, image_mode:str='RGB', new_height
 
         return image
 
-def resize_image(image:PIL.Image, new_height: int = 1200):
+
+def resize_image(image: PIL.Image, new_height: int = 1200):
     """
     Reduces size of an image to a sensible size for reasonably efficient face recognition and returns a copy as a PIL image
     or the original if no resizing is required
@@ -2077,6 +2341,7 @@ def resize_image(image:PIL.Image, new_height: int = 1200):
     else:
         return image
 
+
 def load_orient_and_resize_face_rec_image(filespec: str, new_height: int = 1200):
     """
     Loads an image from file or cache, correcting its orientation from Exif data, resizes it to a sensible size for
@@ -2087,7 +2352,7 @@ def load_orient_and_resize_face_rec_image(filespec: str, new_height: int = 1200)
     """
     image_nparray = None
 
-    image = load_image_from_file_or_cache(filespec=filespec,new_height=new_height)
+    image = load_image_from_file_or_cache(filespec=filespec, new_height=new_height)
     if not image:
         return None
 
@@ -2129,7 +2394,8 @@ def test_face_rec(unknown_image_filename, known_face_encodings, known_face_names
     print("\nChecking face match for image '{}'".format(unknown_image_filename))
 
     # Load an image with an unknown face
-    unknown_image = load_orient_and_resize_face_rec_image(unknown_image_filename, myMainWindow.scaled_height_for_resized_images)
+    unknown_image = load_orient_and_resize_face_rec_image(unknown_image_filename,
+                                                          myMainWindow.scaled_height_for_resized_images)
 
     # Find all the faces and face encodings in the unknown image
     unknown_image_face_locations = face_recognition.face_locations(unknown_image, model='hog')
@@ -2242,7 +2508,8 @@ def load_known_face_encodings_from_elements_catalog(db_con):
             else:
                 # No face encoding in database so read file and create one.  Note no scaling as we want max
                 # resolution on known images.
-                image = load_orient_and_resize_face_rec_image(filename, new_height=myMainWindow.scaled_height_for_resized_images)
+                image = load_orient_and_resize_face_rec_image(filename,
+                                                              new_height=myMainWindow.scaled_height_for_resized_images)
 
                 face_encodings = face_recognition.face_encodings(image)
                 if face_encodings.__len__() != 1:
@@ -2270,7 +2537,7 @@ def load_known_face_encodings_from_elements_catalog(db_con):
         return (known_face_encodings, known_face_names, known_filenames)
 
 
-def get_thumbnail_filename_from_face_id(face_id:int):
+def get_thumbnail_filename_from_face_id(face_id: int):
     """
     Returns the filespec in the thumbnail cache for a given face_id thumbnail.
     :param face_id:
@@ -2278,11 +2545,12 @@ def get_thumbnail_filename_from_face_id(face_id:int):
     """
     # Directory of all thumbnails between 1 and 999 inclusive is stored in a directory named <thumbnail_directory>+'0001000'
     # and 1001 to 1999 is stored in '00002000' and so on
-    this_thumbnail_directory = myMainWindow.thumbnail_directory + '{:07}'.format(int(((face_id)/1000)+1)*1000)
+    this_thumbnail_directory = myMainWindow.thumbnail_directory + '{:07}'.format(int(((face_id) / 1000) + 1) * 1000)
     filespec = this_thumbnail_directory + r'\{}.png'.format(face_id)
     return filespec
 
-def PIL_image_to_QImage(image:PIL.Image):
+
+def PIL_image_to_QImage(image: PIL.Image):
     """
     Converts a PIL image to a Qt QImage
     :param image:   PIL image
@@ -2295,6 +2563,25 @@ def PIL_image_to_QImage(image:PIL.Image):
     data = imrgba.tobytes("raw", "RGBA")
     qimage = QtGui.QImage(data, imrgba.size[0], imrgba.size[1], QtGui.QImage.Format_RGBA8888)
     return qimage
+
+
+def get_subtree_nodes(tree_widget_item):
+    """Returns all QTreeWidgetItems in the subtree rooted at the given node."""
+    nodes = []
+    nodes.append(tree_widget_item)
+    for i in range(tree_widget_item.childCount()):
+        nodes.extend(get_subtree_nodes(tree_widget_item.child(i)))
+    return nodes
+
+
+def get_all_items(tree_widget):
+    """Returns all QTreeWidgetItems in the given QTreeWidget."""
+    all_items = []
+    for i in range(tree_widget.topLevelItemCount()):
+        top_item = tree_widget.topLevelItem(i)
+        all_items.extend(get_subtree_nodes(top_item))
+    return all_items
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

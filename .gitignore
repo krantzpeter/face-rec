@@ -229,6 +229,9 @@ ui_*.h
 Makefile*
 *build-*
 
+# Temporary word files
+*.tmp
+
 # Qt unit tests
 target_wrapper.*
 
