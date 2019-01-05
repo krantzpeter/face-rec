@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'face_rec_processing.ui'
+# Form implementation generated from reading ui file 'Face_rec_processing.ui'
 #
 # Created by: PyQt5 UI code generator 5.11.3
 #
 # WARNING! All changes made in this file will be lost!
 
-from PyQt5 import QtCore, QtGui, QtWidgets
+from PyQt5 import QtCore, QtWidgets
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -44,6 +44,10 @@ class Ui_MainWindow(object):
         self.PushButton_Save.setDefault(False)
         self.PushButton_Save.setObjectName("PushButton_Save")
         self.verticalLayout_2.addWidget(self.PushButton_Save, 0, QtCore.Qt.AlignTop)
+        self.label_clipboard_tag = QtWidgets.QLabel(self.centralwidget)
+        self.label_clipboard_tag.setText("")
+        self.label_clipboard_tag.setObjectName("label_clipboard_tag")
+        self.verticalLayout_2.addWidget(self.label_clipboard_tag)
         self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -72,6 +76,8 @@ class Ui_MainWindow(object):
         self.menu_Filter.setObjectName("menu_Filter")
         self.menu_Set = QtWidgets.QMenu(self.menubar)
         self.menu_Set.setObjectName("menu_Set")
+        self.menuScan_Faces = QtWidgets.QMenu(self.menubar)
+        self.menuScan_Faces.setObjectName("menuScan_Faces")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -109,21 +115,34 @@ class Ui_MainWindow(object):
         self.action_Search_for_Reference_Images.setObjectName("action_Search_for_Reference_Images")
         self.action_Set_Named_as_Confirmed = QtWidgets.QAction(MainWindow)
         self.action_Set_Named_as_Confirmed.setObjectName("action_Set_Named_as_Confirmed")
+        self.action_Search_for_Clusters_in_Unnamed_Faces = QtWidgets.QAction(MainWindow)
+        self.action_Search_for_Clusters_in_Unnamed_Faces.setObjectName("action_Search_for_Clusters_in_Unnamed_Faces")
+        self.action_People_with_No_Reference_Faces = QtWidgets.QAction(MainWindow)
+        self.action_People_with_No_Reference_Faces.setObjectName("action_People_with_No_Reference_Faces")
+        self.action_Fix_Ref_Images_not_properly_tagged = QtWidgets.QAction(MainWindow)
+        self.action_Fix_Ref_Images_not_properly_tagged.setObjectName("action_Fix_Ref_Images_not_properly_tagged")
+        self.action_Exclude_From_Face_Search = QtWidgets.QAction(MainWindow)
+        self.action_Exclude_From_Face_Search.setObjectName("action_Exclude_From_Face_Search")
         self.menu_File.addAction(self.actionE_xit)
         self.menu_Help.addAction(self.action_About)
         self.menuTools.addAction(self.action_Display_Image)
         self.menuTools.addAction(self.action_Find_Faces_in_Images)
+        self.menuTools.addAction(self.action_Fix_Ref_Images_not_properly_tagged)
         self.menu_Filter.addAction(self.action_Filter_All_Faces)
         self.menu_Filter.addAction(self.action_Filter_Named_Faces)
         self.menu_Filter.addAction(self.action_Filter_Reference_Faces)
+        self.menu_Filter.addAction(self.action_People_with_No_Reference_Faces)
         self.menu_Filter.addAction(self.action_Filter_Unnamed_Faces)
-        self.menu_Filter.addAction(self.action_Search_for_Reference_Images)
         self.menu_Set.addAction(self.action_Set_Reference_Faces)
         self.menu_Set.addAction(self.action_Delete_Selected_Faces)
         self.menu_Set.addAction(self.action_Remove_Face_Tag)
         self.menu_Set.addAction(self.action_Change_Face_Tag)
+        self.menu_Set.addAction(self.action_Exclude_From_Face_Search)
+        self.menuScan_Faces.addAction(self.action_Search_for_Reference_Images)
+        self.menuScan_Faces.addAction(self.action_Search_for_Clusters_in_Unnamed_Faces)
         self.menubar.addAction(self.menu_File.menuAction())
         self.menubar.addAction(self.menu_Filter.menuAction())
+        self.menubar.addAction(self.menuScan_Faces.menuAction())
         self.menubar.addAction(self.menu_Set.menuAction())
         self.menubar.addAction(self.menuTools.menuAction())
         self.menubar.addAction(self.menu_Help.menuAction())
@@ -141,6 +160,7 @@ class Ui_MainWindow(object):
         self.menuTools.setTitle(_translate("MainWindow", "Tools"))
         self.menu_Filter.setTitle(_translate("MainWindow", "&Filter"))
         self.menu_Set.setTitle(_translate("MainWindow", "&Update"))
+        self.menuScan_Faces.setTitle(_translate("MainWindow", "&Scan Faces"))
         self.actionE_xit.setText(_translate("MainWindow", "E&xit"))
         self.action_About.setText(_translate("MainWindow", "&About"))
         self.action_Display_Image.setText(_translate("MainWindow", "&Display Image"))
@@ -157,6 +177,10 @@ class Ui_MainWindow(object):
         self.action_Change_Face_Tag.setText(_translate("MainWindow", "&Change Face Tag"))
         self.action_Search_for_Reference_Images.setText(_translate("MainWindow", "Search for &Reference Images"))
         self.action_Set_Named_as_Confirmed.setText(_translate("MainWindow", "Set Selected Named as &Confirmed"))
+        self.action_Search_for_Clusters_in_Unnamed_Faces.setText(_translate("MainWindow", "Search for &Clusters in Unnamed Faces"))
+        self.action_People_with_No_Reference_Faces.setText(_translate("MainWindow", "People with &No Reference Faces"))
+        self.action_Fix_Ref_Images_not_properly_tagged.setText(_translate("MainWindow", "&Fix Ref Images not properly tagged"))
+        self.action_Exclude_From_Face_Search.setText(_translate("MainWindow", "E&xclude From Face Search and Remove Tag"))
 
 
 if __name__ == "__main__":

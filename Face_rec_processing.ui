@@ -59,6 +59,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QLabel" name="label_clipboard_tag">
+          <property name="text">
+           <string/>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QTreeWidget" name="treeWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
@@ -113,6 +120,7 @@
     </property>
     <addaction name="action_Display_Image"/>
     <addaction name="action_Find_Faces_in_Images"/>
+    <addaction name="action_Fix_Ref_Images_not_properly_tagged"/>
    </widget>
    <widget class="QMenu" name="menu_Filter">
     <property name="title">
@@ -121,8 +129,8 @@
     <addaction name="action_Filter_All_Faces"/>
     <addaction name="action_Filter_Named_Faces"/>
     <addaction name="action_Filter_Reference_Faces"/>
+    <addaction name="action_People_with_No_Reference_Faces"/>
     <addaction name="action_Filter_Unnamed_Faces"/>
-    <addaction name="action_Search_for_Reference_Images"/>
    </widget>
    <widget class="QMenu" name="menu_Set">
     <property name="title">
@@ -132,9 +140,18 @@
     <addaction name="action_Delete_Selected_Faces"/>
     <addaction name="action_Remove_Face_Tag"/>
     <addaction name="action_Change_Face_Tag"/>
+    <addaction name="action_Exclude_From_Face_Search"/>
+   </widget>
+   <widget class="QMenu" name="menuScan_Faces">
+    <property name="title">
+     <string>&amp;Scan Faces</string>
+    </property>
+    <addaction name="action_Search_for_Reference_Images"/>
+    <addaction name="action_Search_for_Clusters_in_Unnamed_Faces"/>
    </widget>
    <addaction name="menu_File"/>
    <addaction name="menu_Filter"/>
+   <addaction name="menuScan_Faces"/>
    <addaction name="menu_Set"/>
    <addaction name="menuTools"/>
    <addaction name="menu_Help"/>
@@ -221,6 +238,26 @@
   <action name="action_Set_Named_as_Confirmed">
    <property name="text">
     <string>Set Selected Named as &amp;Confirmed</string>
+   </property>
+  </action>
+  <action name="action_Search_for_Clusters_in_Unnamed_Faces">
+   <property name="text">
+    <string>Search for &amp;Clusters in Unnamed Faces</string>
+   </property>
+  </action>
+  <action name="action_People_with_No_Reference_Faces">
+   <property name="text">
+    <string>People with &amp;No Reference Faces</string>
+   </property>
+  </action>
+  <action name="action_Fix_Ref_Images_not_properly_tagged">
+   <property name="text">
+    <string>&amp;Fix Ref Images not properly tagged</string>
+   </property>
+  </action>
+  <action name="action_Exclude_From_Face_Search">
+   <property name="text">
+    <string>E&amp;xclude From Face Search and Remove Tag</string>
    </property>
   </action>
  </widget>

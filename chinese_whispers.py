@@ -35,14 +35,16 @@ def face_distance(face_encodings, face_to_compare):
     #return np.sum(face_encodings*face_to_compare,axis=1)
     return 1/np.linalg.norm(face_encodings - face_to_compare, axis=1)
 
-def _chinese_whispers(encoding_list, threshold=0.75, iterations=20):
+def chinese_whispers(image_paths, encodings, threshold=0.75, iterations=20):
     """ Chinese Whispers Algorithm
 
     Modified from Alex Loveless' implementation,
     http://alexloveless.co.uk/data/chinese-whispers-graph-clustering-in-python/
 
     Inputs:
-        encoding_list: a list of facial encodings from face_recognition
+        image_paths: a list of unique ids of each face image
+        encodings: a list of numpy array face encodings, each corresponding to each image_path
+        #%%% encoding_list: a list of facial encodings from face_recognition
         threshold: facial match threshold,default 0.6
         iterations: since chinese whispers is an iterative algorithm, number of times to iterate
 
@@ -58,7 +60,7 @@ def _chinese_whispers(encoding_list, threshold=0.75, iterations=20):
     nodes = []
     edges = []
 
-    image_paths, encodings = zip(*encoding_list)
+    #%%% image_paths, encodings = zip(*encoding_list)
 
     if len(encodings) <= 1:
         print ("No enough encodings to cluster!")
@@ -94,7 +96,7 @@ def _chinese_whispers(encoding_list, threshold=0.75, iterations=20):
 
     # Iterate
     for _ in range(0, iterations):
-        cluster_nodes = G.nodes()
+        cluster_nodes = list(G.nodes())
         shuffle(cluster_nodes)
         for node in cluster_nodes:
             neighbors = G[node]
@@ -159,7 +161,7 @@ def cluster_facial_encodings(facial_encodings):
         return []
 
     # Only use the chinese whispers algorithm for now
-    sorted_clusters = _chinese_whispers(facial_encodings.items())
+    sorted_clusters = chinese_whispers(facial_encodings.items())
     return sorted_clusters
 
 def compute_facial_encodings(sess,images_placeholder,embeddings,phase_train_placeholder,image_size,
