@@ -17,10 +17,10 @@ import numpy
 from PIL import ImageDraw, Image, ExifTags, ImageQt
 from PyQt5 import QtGui
 from PyQt5 import QtWidgets
-from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable, QThreadPool, Qt, QMutexLocker, QMutex
+from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable, QThreadPool, Qt, QMutexLocker, QMutex, QDate
 from PyQt5.QtGui import QImage, QKeyEvent
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QApplication, qApp, QLabel, QComboBox, QTreeWidgetItem, \
-    QMessageBox
+    QMessageBox, QInputDialog
 
 from face_rec_processing import Ui_MainWindow
 
@@ -130,7 +130,7 @@ class EditImageTableCellWidget(QWidget):
     def keyPressEvent(self, e: QKeyEvent):
         key_pressed = e.key()
         if (e.modifiers() & Qt.ControlModifier) and (key_pressed == Qt.Key_C or key_pressed) == Qt.Key_V or key_pressed == Qt.Key_Insert:
-            # Ignore Ctrl+C and Ctrl+V and Ctrl+Insevent and send event to parent
+            # Ignore Ctrl+C and Ctrl+V and Ctrl+Ins event and send event to parent
             e.ignore()
 
 
@@ -170,6 +170,8 @@ class EditImageTableCellWidget(QWidget):
                                         filename=filename)
         # Now add tag elements
         # self.thumb_qcombo = QComboBox()
+        if face_id == 7490:
+            pass
 
         if tag_distance_list:
             #todo restrict names for a single photo to only include the best matching name for each face once
@@ -225,6 +227,9 @@ class EditImageTableCellWidget(QWidget):
 
 
         self.set_thumb_qcombo_color()
+
+        status_tip = "Face id: {}   Media id: {} tag_id: {} Media Filename: {}".format(self.face_id, self.media_id, self.tag_id,  filename)
+        self.setStatusTip(status_tip)
 
         # Make sure all members are initialised
         try:
@@ -325,6 +330,7 @@ class EditImageTableCellWidget(QWidget):
 
         qimage = myapp.get_qimage_face_thumbnail(face_id=face_id)
         pix_image = QtGui.QPixmap(qimage)
+
         self.thumb_qlabel.setPixmap(pix_image)
         # tag_name = 'Dummy'
         ##### if tag_name:
@@ -350,8 +356,6 @@ class EditImageTableCellWidget(QWidget):
         ##### else:
         #####     self.tag_id = None
 
-        status_tip = "Face id: {}   Media id: {}  Media Filename: {}".format(face_id, media_id, filename)
-        self.setStatusTip(status_tip)
         return layout
 
     def on_thumb_qcombo_currentTextChanged(self, e:str):
@@ -665,12 +669,17 @@ class myMainWindow(QMainWindow):
         self.ui.action_Filter_Reference_Faces.triggered.connect(self.filter_reference_faces)
         self.ui.action_Set_Reference_Faces.triggered.connect(self.set_reference_faces)
         self.ui.action_Filter_Unnamed_Faces.triggered.connect(self.filter_unnamed_faces)
+        self.ui.action_Set_Confirmed_Faces.triggered.connect(self.set_confirmed_faces)
         self.ui.action_Search_for_Clusters_in_Unnamed_Faces.triggered.connect(self.scan_unknown_faces_for_clusters_dlib)
         self.ui.action_People_with_No_Reference_Faces.triggered.connect(self.filter_people_with_no_reference_faces)
         self.ui.action_Fix_Ref_Images_not_properly_tagged.triggered.connect(self.fix_reference_images_that_were_not_properly_tagged)
         self.ui.action_Exclude_From_Face_Search.triggered.connect(
             self.exclude_from_face_search)
+        self.ui.action_Add_Face_Tag.triggered.connect(self.add_face_tag_to_tree_widget)
+
+        self.ui.action_Update_Metadata_of_Files_in_Catalog.triggered.connect(self.update_metadata_of_files_in_catalog)
         self.ui.PushButton_Save.clicked.connect(self.save_added_tags)
+        self.ui.lineEditSearch.textChanged.connect(self.tree_search_text_changed)
 
         self.ui.StartStopPushButton.setEnabled(False)
         self.ui.StartStopPushButton.setVisible(False)
@@ -697,6 +706,7 @@ class myMainWindow(QMainWindow):
         self.tableWidget_save_pending = False  # Set to true if the tableWidget has been changed and needs to be saved
         # and set save_function_tableWidget to function you need to call
         self.save_function_tableWidget = None
+        self.tree_widget_item_list:list = None
 
         self.ui.tableWidget.setColumnCount(self.grid_cols)
 
@@ -712,10 +722,15 @@ class myMainWindow(QMainWindow):
         self.work_to_be_done_queue = queue.Queue()
         self.threadpool = QThreadPool()
         self.max_thread_count = 1
-        self.db_con = lite.connect('C:\ProgramData\Adobe\Photoshop Elements\Catalogs\My Catalog\catalog.psedb')
+
+        # Open sqlite adobe photoshop element 6 catalog database
+        self.db_con = lite.connect(r'C:\ProgramData\Adobe\Photoshop Elements\Catalogs\My Catalog\catalog.psedb')
 
         # Set up for use of default, special row_factory so that columns can be accessed by name
         self.db_con.row_factory = lite.Row
+
+        # Open sqlite media thumbnail cache and setup row factory in case we want to access columns by name
+        self.media_thumb_db_con = lite.connect(r'C:\ProgramData\Adobe\Photoshop Elements\Catalogs\My Catalog\thumb.5.cache')
 
         self.people_tag_id = AEL.get_tag_id_of_specified_tag_name(self.db_con, 'People')
 
@@ -724,6 +739,94 @@ class myMainWindow(QMainWindow):
                                                                                               'Face Scan Completed')
         if not myMainWindow.tag_id_of_face_scan_completed_tag:
             raise (Exception("Couldn't find 'Face Scan Completed' in Adobe catalog."))
+
+    def add_face_tag_to_tree_widget(self):
+        """
+        Adds a face tag as a child of the currently selected treeWidget element and allows user to edit.  Then
+        saves the new tag in the catalog and updates the treeWidget element list.
+        :return:
+        """
+        tree_widget_items = self.ui.treeWidget.selectedItems()
+        if not tree_widget_items or tree_widget_items.__len__() != 1:
+            msgBox = QMessageBox()
+            msgBox.setText("Please select a single tag under which you would like the new face tag inserted.")
+            msgBox.exec()
+            return
+
+        tree_widget_item = tree_widget_items[0]
+        tree_widget_item.setExpanded(True)
+        new_tree_widget_item = QTreeWidgetItem()
+        flags = new_tree_widget_item.flags()
+        new_flags = flags | Qt.ItemIsEditable
+        new_tree_widget_item.setFlags(new_flags)
+        tree_widget_item.insertChild(0, new_tree_widget_item)
+        self.ui.treeWidget.scrollToItem(tree_widget_item)
+
+        # Activate trapping of this signal so we can save disable editability when we've finished.
+        self.ui.treeWidget.itemChanged.connect(self.tree_widget_item_changed)
+
+        self.ui.treeWidget.editItem(new_tree_widget_item)
+
+    def tree_widget_item_changed(self, tree_widget_item:QTreeWidgetItem, column:int):
+        """
+        Signal activated when a treeWidgetItem is changed.  Updates item in catalog and dactiveates editability of the
+        treeWidgetItem
+        :return:
+        """
+        # Disconnect signal so this doesn't get called again until reactivated.
+        self.ui.treeWidget.itemChanged.disconnect(self.tree_widget_item_changed)
+
+        # Disable editing of this item.
+        flags = tree_widget_item.flags() & (~Qt.ItemIsEditable)
+        tree_widget_item.setFlags(flags)
+
+        # save new tag to catalog - which also sets "can_have_children" attribute of parent if not set in tag_table
+        tag_name = tree_widget_item.text(0)
+        parent_tag_id = tree_widget_item.parent().data(0, Qt.UserRole)
+        tag_id = AEL.CreateTag(self.db_con, tag_name, parent_tag_id, can_have_children=0)
+        tree_widget_item.setData(0, Qt.UserRole, tag_id)
+        self.ui.treeWidget.scrollToItem(tree_widget_item)
+
+    def update_metadata_of_files_in_catalog(self):
+        """
+        Updates the metadata of images added to the catalog with their earliest date metadata after the date
+        entered by the user
+        :return:
+        """
+        # get a date
+        date_mask = "dd/MM/yyyy"
+
+        qdate_default = QDate.currentDate().addMonths(-3)
+
+        (user_date_text, ok) = QInputDialog.getText(self,
+            'Catalog Metadata Update',
+            'Enter date after which images in the Adobe Photoshop Elements catalog should have their metadata updated.',
+            text=qdate_default.toString(date_mask))
+
+        if ok:
+            user_date = QDate.fromString(user_date_text, date_mask)
+            if user_date:
+                py_user_date = user_date.toPyDate()
+                AEL.CheckUpdateMetadataOfFilesInCatalog(self.db_con, date_taken_start_date=py_user_date, update=False)
+
+    def tree_search_text_changed(self, text:str):
+        """
+        Displays items in the treeview that match the entered text
+        :param text:
+        :return:
+        """
+        # disp items in treeview that match the entered text when >= 3 chars
+        if len(text) >= 3:
+            index = 0
+            for tree_widget_item in self.tree_widget_item_list:
+                if text.lower() in tree_widget_item.text(0).lower():
+                    self.ui.treeWidget.setCurrentItem(tree_widget_item,0)
+                    # model_index = self.ui.treeWidget.indexFromItem(tree_widget_item,0)
+                    # self.ui.treeWidget.scrollTo(model_index)
+                    break
+                index += 1
+        else:
+            pass
 
     def enumerate_menu_actions(self, menu: QtWidgets.QMenu, action_list: list = None):
         """
@@ -1276,7 +1379,7 @@ class myMainWindow(QMainWindow):
         query = """
                 SELECT 
                     face_id, 
-                    media_id, 
+                    face_table.media_id, 
                     media_table.full_filepath, 
                     volume_table.drive_path_if_builtin,
                     tag_id,
@@ -1287,12 +1390,18 @@ class myMainWindow(QMainWindow):
                 FROM 
                     face_table, 
                     media_table, 
-                    volume_table
+                    volume_table,
+                    metadata_date_time_table, 
+                    media_to_metadata_table 
                 WHERE 
-                    media_table.id = face_table.media_id AND
-                    media_table.volume_id = volume_table.id AND
-                    face_table.tag_id IS NOT NULL
-                ORDER BY tag_name, is_reference_face DESC, is_confirmed_face DESC;          
+                    media_table.id = face_table.media_id
+                    AND media_to_metadata_table.media_id = media_table.id
+                    AND media_to_metadata_table.metadata_id = metadata_date_time_table.id
+                    /* AND metadata_date_time_table.description_id = 8 */
+                    AND media_table.volume_id = volume_table.id
+                    AND face_table.tag_id IS NOT NULL
+                GROUP BY face_id
+                ORDER BY tag_name, is_reference_face DESC, min(metadata_date_time_table.value);         
         """
         self.load_thumbnails_to_grid(sql_query=query, break_row_on_tag_change=True)
 
@@ -1376,14 +1485,34 @@ class myMainWindow(QMainWindow):
                         )
                 order by name, is_confirmed_face desc;        
         """.format(self.people_tag_id)
-        self.load_thumbnails_to_grid(sql_query=query, break_row_on_tag_change=False)
+        self.load_thumbnails_to_grid(sql_query=query, break_row_on_tag_change=True)
 
     def set_reference_faces(self):
         selection = self.ui.tableWidget.selectedIndexes()
         for model_index in selection:
             table_widget_item = self.ui.tableWidget.cellWidget(model_index.row(), model_index.column())
-            table_widget_item.is_reference_face = True
+            if table_widget_item:
+                table_widget_item.is_reference_face = True
         self.update_catalog_from_selected_faces()
+
+    def set_confirmed_faces(self):
+        selection = self.ui.tableWidget.selectedIndexes()
+        progress = QtWidgets.QProgressDialog("Updating faces, please wait ...", "Abort", 0,
+                                             len(selection) * 2)
+        progress.setWindowModality(Qt.WindowModal)
+        progress.setWindowTitle("Face Recognition")
+
+        face_count = 1
+        for model_index in selection:
+            table_widget_item = self.ui.tableWidget.cellWidget(model_index.row(), model_index.column())
+            if table_widget_item and table_widget_item.tag_id != None :
+                # item has a face and the face has a tag so allow it to be flagged as confirmed
+                table_widget_item.is_confirmed_face = True
+            progress.setValue(face_count)
+            if (progress.wasCanceled()):
+                break
+            face_count += 1
+        self.update_catalog_from_selected_faces(progress=progress, progress_start=face_count)
 
     def exclude_from_face_search(self):
         selection = self.ui.tableWidget.selectedIndexes()
@@ -1564,7 +1693,7 @@ class myMainWindow(QMainWindow):
                 # save thumbnail to .png file
                 try:
                     try:
-                        this_thumbnail_directory = os.path(filespec)
+                        this_thumbnail_directory = os.path.dirname(filespec)
                         if not os.path.exists(this_thumbnail_directory):
                             os.makedirs(this_thumbnail_directory)
                     except:
@@ -2173,8 +2302,8 @@ class myMainWindow(QMainWindow):
                 self.ui.tableWidget.resizeColumnsToContents()
                 # self.show()
                 # See whether this makes QTableWidget more efficient
-                # hdr = self.ui.tableWidget.horizontalHeader()
-                # hdr.setSectionResizeMode(QtWidgets.QHeaderView.Fixed)
+                hdr = self.ui.tableWidget.horizontalHeader()
+                hdr.setResizeContentsPrecision(100)
 
     def remove_face_tag_from_selected_items(self):
         """
@@ -2227,14 +2356,24 @@ class myMainWindow(QMainWindow):
             print("Unexpected error attempting to remove face tags.")
             raise
 
-    def update_catalog_from_selected_faces(self):
+    def update_catalog_from_selected_faces(self, progress:QtWidgets.QProgressDialog=None, progress_start:int=0):
         """
         Updates that face_table and tag_to_media_table with the tag_id, is_reference_face and is_confirmed_face fields
         of each selected widget in the tableWidget
         :return:
         """
+
         # Get selected faces.
         selected_faces = self.ui.tableWidget.selectedIndexes()
+        # Setup progress dialog if not already done.
+        if not progress:
+            progress = QtWidgets.QProgressDialog("Updating catalog from faces, please wait ...", "Abort", 0,
+                                                 len(selected_faces))
+            progress.setWindowModality(Qt.WindowModal)
+            progress.setWindowTitle("Face Recognition")
+            face_count = 1
+        else:
+            face_count = progress_start
         tag_to_media_table_update_set = set()
         face_table_update_list = list()
 
@@ -2277,6 +2416,11 @@ class myMainWindow(QMainWindow):
                             # Didn't find this media_id and tag_id combo and tag_id is not None and not already in update
                             # set so add to set so it will be inserted
                             tag_to_media_table_update_set.add(media_and_tag_id)
+
+                        progress.setValue(face_count)
+                        if (progress.wasCanceled()):
+                            break
+                        face_count += 1
 
                 except:
                     print("Unexpected error checking whether media_id tags need updating.")
@@ -2501,6 +2645,9 @@ class myMainWindow(QMainWindow):
                 tree_widget.sortByColumn(0,Qt.AscendingOrder)
                 tree_widget.setSortingEnabled(True)
 
+                # update list of items
+                self.tree_widget_item_list = get_all_items(self.ui.treeWidget)
+
 
 def delete_face_thumbnail_if_it_exists(face_id: int):
     """
@@ -2511,8 +2658,18 @@ def delete_face_thumbnail_if_it_exists(face_id: int):
     """
     thumb_filespec = get_thumbnail_filename_from_face_id(face_id)
     if os.path.exists(thumb_filespec):
-        os.remove(thumb_filespec)
-        return True
+        try:
+            os.remove(thumb_filespec)
+            return True
+
+        except Exception as e:
+            print ("Unable to delete thumbnail '{}'.".format(thumb_filespec))
+            if hasattr(e, 'message'):
+                print(e.message)
+            else:
+                print(e)
+
+            return False
     else:
         return False
 
@@ -3227,6 +3384,11 @@ if __name__ == '__main__':
 
     myapp.filter_named_faces()
     myapp.populate_tree_widget()
+
+    ## Code to read a thumbnail from Adobe Photoshop Elements 6 thumbnail cache
+    # media_thumbnail_qimage = AEL.GetMediaThumbnailFromMediaId(myapp.media_thumb_db_con, 443870, 160, 120)
+    # pix_image = QtGui.QPixmap(media_thumbnail_qimage)
+
     myapp.show()
     sys.exit(app.exec_())
 

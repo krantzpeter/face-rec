@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'Face_rec_processing.ui'
+# Form implementation generated from reading ui file 'face_rec_processing.ui'
 #
 # Created by: PyQt5 UI code generator 5.11.3
 #
@@ -48,6 +48,26 @@ class Ui_MainWindow(object):
         self.label_clipboard_tag.setText("")
         self.label_clipboard_tag.setObjectName("label_clipboard_tag")
         self.verticalLayout_2.addWidget(self.label_clipboard_tag)
+        self.horizontalLayout_4 = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_4.setObjectName("horizontalLayout_4")
+        self.label = QtWidgets.QLabel(self.centralwidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Preferred)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label.sizePolicy().hasHeightForWidth())
+        self.label.setSizePolicy(sizePolicy)
+        self.label.setMaximumSize(QtCore.QSize(40, 16777215))
+        self.label.setObjectName("label")
+        self.horizontalLayout_4.addWidget(self.label)
+        self.lineEditSearch = QtWidgets.QLineEdit(self.centralwidget)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.lineEditSearch.sizePolicy().hasHeightForWidth())
+        self.lineEditSearch.setSizePolicy(sizePolicy)
+        self.lineEditSearch.setObjectName("lineEditSearch")
+        self.horizontalLayout_4.addWidget(self.lineEditSearch)
+        self.verticalLayout_2.addLayout(self.horizontalLayout_4)
         self.treeWidget = QtWidgets.QTreeWidget(self.centralwidget)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Preferred, QtWidgets.QSizePolicy.Expanding)
         sizePolicy.setHorizontalStretch(0)
@@ -123,17 +143,26 @@ class Ui_MainWindow(object):
         self.action_Fix_Ref_Images_not_properly_tagged.setObjectName("action_Fix_Ref_Images_not_properly_tagged")
         self.action_Exclude_From_Face_Search = QtWidgets.QAction(MainWindow)
         self.action_Exclude_From_Face_Search.setObjectName("action_Exclude_From_Face_Search")
+        self.action_Set_Confirmed_Faces = QtWidgets.QAction(MainWindow)
+        self.action_Set_Confirmed_Faces.setObjectName("action_Set_Confirmed_Faces")
+        self.action_Update_Metadata_of_Files_in_Catalog = QtWidgets.QAction(MainWindow)
+        self.action_Update_Metadata_of_Files_in_Catalog.setObjectName("action_Update_Metadata_of_Files_in_Catalog")
+        self.action_Add_Face_Tag = QtWidgets.QAction(MainWindow)
+        self.action_Add_Face_Tag.setObjectName("action_Add_Face_Tag")
         self.menu_File.addAction(self.actionE_xit)
         self.menu_Help.addAction(self.action_About)
         self.menuTools.addAction(self.action_Display_Image)
         self.menuTools.addAction(self.action_Find_Faces_in_Images)
         self.menuTools.addAction(self.action_Fix_Ref_Images_not_properly_tagged)
+        self.menuTools.addAction(self.action_Update_Metadata_of_Files_in_Catalog)
+        self.menuTools.addAction(self.action_Add_Face_Tag)
         self.menu_Filter.addAction(self.action_Filter_All_Faces)
         self.menu_Filter.addAction(self.action_Filter_Named_Faces)
         self.menu_Filter.addAction(self.action_Filter_Reference_Faces)
         self.menu_Filter.addAction(self.action_People_with_No_Reference_Faces)
         self.menu_Filter.addAction(self.action_Filter_Unnamed_Faces)
         self.menu_Set.addAction(self.action_Set_Reference_Faces)
+        self.menu_Set.addAction(self.action_Set_Confirmed_Faces)
         self.menu_Set.addAction(self.action_Delete_Selected_Faces)
         self.menu_Set.addAction(self.action_Remove_Face_Tag)
         self.menu_Set.addAction(self.action_Change_Face_Tag)
@@ -154,6 +183,7 @@ class Ui_MainWindow(object):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "Face Recognition Processing"))
         self.PushButton_Save.setText(_translate("MainWindow", "Save"))
+        self.label.setText(_translate("MainWindow", "Search:"))
         self.StartStopPushButton.setText(_translate("MainWindow", "Stop"))
         self.menu_File.setTitle(_translate("MainWindow", "&File"))
         self.menu_Help.setTitle(_translate("MainWindow", "&Help"))
@@ -181,6 +211,9 @@ class Ui_MainWindow(object):
         self.action_People_with_No_Reference_Faces.setText(_translate("MainWindow", "People with &No Reference Faces"))
         self.action_Fix_Ref_Images_not_properly_tagged.setText(_translate("MainWindow", "&Fix Ref Images not properly tagged"))
         self.action_Exclude_From_Face_Search.setText(_translate("MainWindow", "E&xclude From Face Search and Remove Tag"))
+        self.action_Set_Confirmed_Faces.setText(_translate("MainWindow", "Set &Confirmed Faces"))
+        self.action_Update_Metadata_of_Files_in_Catalog.setText(_translate("MainWindow", "Update &Metadata of Files in Catalog"))
+        self.action_Add_Face_Tag.setText(_translate("MainWindow", "Add Face &Tag"))
 
 
 if __name__ == "__main__":

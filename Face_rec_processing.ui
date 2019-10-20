@@ -66,6 +66,39 @@
          </widget>
         </item>
         <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_4">
+          <item>
+           <widget class="QLabel" name="label">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>40</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Search:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEditSearch">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
          <widget class="QTreeWidget" name="treeWidget">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
@@ -121,6 +154,8 @@
     <addaction name="action_Display_Image"/>
     <addaction name="action_Find_Faces_in_Images"/>
     <addaction name="action_Fix_Ref_Images_not_properly_tagged"/>
+    <addaction name="action_Update_Metadata_of_Files_in_Catalog"/>
+    <addaction name="action_Add_Face_Tag"/>
    </widget>
    <widget class="QMenu" name="menu_Filter">
     <property name="title">
@@ -137,6 +172,7 @@
      <string>&amp;Update</string>
     </property>
     <addaction name="action_Set_Reference_Faces"/>
+    <addaction name="action_Set_Confirmed_Faces"/>
     <addaction name="action_Delete_Selected_Faces"/>
     <addaction name="action_Remove_Face_Tag"/>
     <addaction name="action_Change_Face_Tag"/>
@@ -258,6 +294,21 @@
   <action name="action_Exclude_From_Face_Search">
    <property name="text">
     <string>E&amp;xclude From Face Search and Remove Tag</string>
+   </property>
+  </action>
+  <action name="action_Set_Confirmed_Faces">
+   <property name="text">
+    <string>Set &amp;Confirmed Faces</string>
+   </property>
+  </action>
+  <action name="action_Update_Metadata_of_Files_in_Catalog">
+   <property name="text">
+    <string>Update &amp;Metadata of Files in Catalog</string>
+   </property>
+  </action>
+  <action name="action_Add_Face_Tag">
+   <property name="text">
+    <string>Add Face &amp;Tag</string>
    </property>
   </action>
  </widget>
